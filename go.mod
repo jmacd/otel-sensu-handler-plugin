@@ -11,6 +11,8 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.24.0
 	go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v0.24.0
 	go.opentelemetry.io/otel/metric v0.24.0
+	go.opentelemetry.io/otel/sdk v1.1.0
+	go.opentelemetry.io/otel/sdk/export/metric v0.24.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v0.24.0
 	google.golang.org/grpc v1.41.0
 )
