@@ -16,10 +16,9 @@ import (
 	"github.com/sensu-community/sensu-plugin-sdk/sensu"
 	"github.com/sensu/sensu-go/types"
 
-	"go.opentelemetry.io/otel/exporters/otlp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 
-	"go.opentelemetry.io/otel/exporters/stdout"
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
 	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
 	"go.opentelemetry.io/otel/sdk/metric/selector/simple"
@@ -52,20 +51,13 @@ func getenv(key, fallback string) string {
 }
 
 func main() {
-	exporter, err := stdout.NewExporter(
-		stdout.WithPrettyPrint(),
-	)
-	if err != nil {
-		log.Fatalf("failed to initialize stdout export pipeline: %v", err)
-	}
-
 	ctx := context.Background()
-	otelExporter, err := otlp.NewExporter(
+	otelExporter, err := otlpmetric.New(
 		ctx,
-		otlpgrpc.NewDriver(
-			otlpgrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, "")),
-			otlpgrpc.WithEndpoint(getenv("OTEL_EXPORTER_OTLP_METRIC_ENDPOINT", "ingest.lightstep.com:443")),
-			otlpgrpc.WithHeaders(map[string]string{
+		otlpmetricgrpc.NewClient(
+			otlpmetricgrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, "")),
+			otlpmetricgrpc.WithEndpoint(getenv("OTEL_EXPORTER_OTLP_METRIC_ENDPOINT", "ingest.lightstep.com:443")),
+			otlpmetricgrpc.WithHeaders(map[string]string{
 				"lightstep-access-token":    os.Getenv("LS_ACCESS_TOKEN"),
 			}),
 		),
@@ -76,16 +68,15 @@ func main() {
 	}
 
 	pushController := controller.New(
-		processor.New(
+		processor.NewFactory(
 			simple.NewWithExactDistribution(),
-			exporter,
+			otelExporter,
 		),
-		controller.WithExporter(exporter),
 		controller.WithExporter(otelExporter),
 		controller.WithCollectPeriod(1*time.Second),
 	)
 
-	global.SetMeterProvider(pushController.MeterProvider())
+	global.SetMeterProvider(pushController)
 
 	err = pushController.Start(ctx)
 	if err != nil {
@@ -128,7 +119,7 @@ func eventToOtel(event *types.Event) error {
 		for _, t := range m.Tags {
 			labels = append(labels, attribute.String(t.Name, t.Value))
 		}
-		recorder, err := meter.NewFloat64ValueRecorder(m.Name)
+		recorder, err := meter.NewFloat64Histogram(m.Name)
 		if err != nil {
 			return fmt.Errorf("error creating recorder: %v", err)
 		}
