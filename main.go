@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/number"
 	"go.opentelemetry.io/otel/metric/sdkapi"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
@@ -137,13 +136,13 @@ func (ex *exportValue) LastValue() (number.Number, time.Time, error) {
 	return number.NewFloat64Number(ex.value), ex.timestamp, nil
 }
 
-func (ex *exportLibraryEvent) ForEach(_ sdkexport.ExportKindSelector, recordFunc func(sdkexport.Record) error) error {
+func (ex *exportLibraryEvent) ForEach(_ aggregation.TemporalitySelector, recordFunc func(sdkexport.Record) error) error {
 	for _, m := range ex.Event.Metrics.Points {
 		var attrs []attribute.KeyValue
 		for _, t := range m.Tags {
 			attrs = append(attrs, attribute.String(t.Name, t.Value))
 		}
-		descriptor := metric.NewDescriptor(m.Name, sdkapi.GaugeObserverInstrumentKind, number.Float64Kind, "", "")
+		descriptor := sdkapi.NewDescriptor(m.Name, sdkapi.GaugeObserverInstrumentKind, number.Float64Kind, "", "")
 
 		attrSet := attribute.NewSet(attrs...)
 
