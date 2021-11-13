@@ -159,11 +159,8 @@ func (ex *exportLibraryEvent) ForEach(_ sdkexport.ExportKindSelector, recordFunc
 				&descriptor,
 				&attrSet,
 				&gauge,
-
-				// Note: start and end time are not used for Gauge points,
-				// they are only meaningful with aggregation temporality.
-				time.Time{},
-				time.Time{},
+				gauge.timestamp.Add(-time.Microsecond),
+				gauge.timestamp,
 			)); err != nil {
 			return err
 		}
